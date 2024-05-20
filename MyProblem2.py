@@ -12,11 +12,8 @@ from SubTask import SubTask
 from Task import Task
 from TaskGroup import TaskGroup
 from tools import split_array_by_greater_than_N, calu_distance, calu_fly_power_cost, find_max_finshedtime_pre, \
-    find_max_finshedtime_cloud_pre, build_relationship, findlastfinshtime_e, findlastfinshtime_c, calu_power_cost, \
-    create_json, create_list, find_max_distance
+    find_max_finshedtime_cloud_pre, build_relationship
 from Settings import Settings
-
-
 
 
 class MyProblem(ea.Problem):  # 继承Problem父类
@@ -70,8 +67,7 @@ class MyProblem(ea.Problem):  # 继承Problem父类
         for n in range(len(groups)):  # i表示group的无人机的id
             # 以下是一个无人机的飞行区域的操作
             task_group = TaskGroup()
-            task_group.power_fly_cost, task_group.distance = calu_fly_power_cost(places, groups[n], W, H, s, settings.Pf)  # 计算飞行的能量消耗
-             # =
+            task_group.power_fly_cost = calu_fly_power_cost(places, groups[n], W, H, s, settings.Pf)  # 计算飞行的能量消耗
              # 无人机的序列  有先后顺序
             rn = len(groups[n])  # rn 无人机n的飞行区域
 
@@ -115,7 +111,6 @@ class MyProblem(ea.Problem):  # 继承Problem父类
                         task.quene.append(1)
                         subTask.pos = 1  # 在边
                         subTask.execution_position = [n]
-
                         if i == 0:
                             # 如果第一个任务在边端，那只需要做W的更新即可
                             subTask.submitTime = task.photoTime     # 第一个时间是任务开始时间
@@ -123,7 +118,7 @@ class MyProblem(ea.Problem):  # 继承Problem父类
                             subTask.finished_time = subTask.submitTime + subTask.execution_time_e
                             task.data_e['W'] = 1  # W的认识
                             subTask.power_cost = settings.Pi_edge[i] #
-
+                            task_group.power_compute_cost += subTask.power_cost
 
                         if i == 1:
                             subTask.execution_time_e = settings.RDMT_Edge[i]  # 执行时间
@@ -136,6 +131,7 @@ class MyProblem(ea.Problem):  # 继承Problem父类
                                 subTask.finished_time = subTask.submitTime + subTask.execution_time_e
                             task.data_e['H'] = 1
                             subTask.power_cost = settings.Pi_edge[i]  #
+                            task_group.power_compute_cost += subTask.power_cost
 
                         if i == 2:
                             # 如果S在本地，需要下载HSI
@@ -157,6 +153,7 @@ class MyProblem(ea.Problem):  # 继承Problem父类
                             subTask.finished_time = subTask.submitTime + subTask.communication + subTask.execution_time_e  # H 更新完的时间加上交互时间
                             task.data_e['S'] = 1
                             subTask.power_cost = settings.Pi_edge[i]  #
+                            task_group.power_compute_cost += subTask.power_cost
 
                         if i == 3:  # 更新C  需要 等所有的
                             subTask.execution_time_e = settings.RDMT_Edge[i]  # 执行时间
@@ -179,6 +176,7 @@ class MyProblem(ea.Problem):  # 继承Problem父类
                             subTask.finished_time = subTask.submitTime + subTask.communication + subTask.execution_time_e #  + 通讯时间和执行时间 就是结束时间
                             task.data_e['C'] = 1
                             subTask.power_cost = settings.Pi_edge[i]  #
+                            task_group.power_compute_cost += subTask.power_cost
 
                         if i == 4:  # 融合目标检测 需要WHSC
                             subTask.execution_time_e = settings.RDMT_Edge[i]  # 执行时间
@@ -201,7 +199,7 @@ class MyProblem(ea.Problem):  # 继承Problem父类
                             subTask.submitTime = task.subTasks[i - 1].finished_time
                             subTask.finished_time = subTask.submitTime + subTask.communication + subTask.execution_time_e
                             subTask.power_cost = settings.Pi_edge[i]  #
-                        task_group.power_compute_cost += subTask.power_cost  # 加cost
+                            task_group.power_compute_cost += subTask.power_cost
 
                     else:  # 在云上
                         task.quene.append(0)
@@ -305,7 +303,7 @@ class MyProblem(ea.Problem):  # 继承Problem父类
         cloudTasks = [[] for _ in range(settings.K)]
         id = 0
         for im in range(settings.M * settings.I):
-            subTask_temp: SubTask = tasks_all.pop(0)
+            subTask_temp: SubTask = tasks_all.pop()
             n = subTask_temp.n  # 无人机
             if subTask_temp.pos == 1: # 在边端
                 edge_task = EdgeTask()
@@ -323,8 +321,7 @@ class MyProblem(ea.Problem):  # 继承Problem父类
                         if subTask_temp.i == 0 or subTask_temp.i == 1 or subTask_temp.i == 2: # 如果是WHS更新，就没必要获取前序节点了
                             edge_task.startTime = subTask_temp.submitTime
                         elif subTask_temp.i == 3:
-                            edge_task.startTime = max(find_max_finshedtime_pre(cloudTasks, edgeTasks, n, [0, 1, 2]),
-                                                      subTask_temp.submitTime)
+                            edge_task.startTime = max(find_max_finshedtime_pre(cloudTasks, edgeTasks, n, [0, 1, 2]), subTask_temp.submitTime)
                         elif subTask_temp.i == 4:
                             edge_task.startTime = max(find_max_finshedtime_pre(cloudTasks, edgeTasks, n, [3]),
                                                       subTask_temp.submitTime)
@@ -365,7 +362,7 @@ class MyProblem(ea.Problem):  # 继承Problem父类
                         find_max_finshedtime_cloud_pre(cloudTasks, edgeTasks, n, [3],
                                                        subTask_temp.execution_position),
                         subTask_temp.submitTime)  # 找到前序节点和vm上的最后时间
-                cloudTask.finshedTime = cloudTask.startTime + subTask_temp.execution_time_c + subTask_temp.communication
+                cloudTask.finshedTime = cloudTask.startTime + subTask_temp.execution_time_e + subTask_temp.communication
 
                 for vmi in range(settings.I):
                     if subTask_temp.execution_position[vmi] == 1:
@@ -378,19 +375,10 @@ class MyProblem(ea.Problem):  # 继承Problem父类
                         cloudTasks[vmi].append(cloudTask_temp)
 
 
-        cloud_last = findlastfinshtime_c(cloudTasks) # 找到云处理的最后的时间，处理时间最小
-        edge_last = findlastfinshtime_e(cloudTasks)  # 每个边的最后的时间  方差最小
-        power_edge_cost = calu_power_cost(edgeTasks)  # 边缘的消耗，这个是约束项
-        edge_max_time = find_max_distance(task_groups)  # 边端最长飞行距离  目标 飞行距离最小
-
-
-        # pop.CV = np.hstack([,])  # 计算违反约束程度值，赋值给种群对象的CV属性
-
-
         build_relationship(cloudTasks, edgeTasks)
-        # create_json(cloudTasks, cloudTasks, settings.N)
-        create_list(cloudTasks, edgeTasks, settings.N, settings.K)
         print()
+
+
 
 
         x1 = X[:, [0]]

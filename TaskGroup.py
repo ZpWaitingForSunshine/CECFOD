@@ -5,3 +5,4 @@ class TaskGroup():  # 任务
         self.lastNode = None
         self.power_fly_cost = 0
         self.power_compute_cost = 0
+        self.distance = 0
