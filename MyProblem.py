@@ -22,13 +22,13 @@ from Settings import Settings
 class MyProblem(ea.Problem):  # 继承Problem父类
     def __init__(self):
         name = 'MyProblem'  # 初始化name（函数名称，可以随意设置）
-        M = 1  # 初始化M（目标维数）
+        M = 3  # 初始化M（目标维数）
 
         self.settings = Settings()
         settings = self.settings
 
         # 初始化maxormins（目标最小最大化标记列表，1：最小化；-1：最大化）
-        maxormins = [-1]
+        maxormins = [1, 1, 1]
 
         # 初始化Dim（决策变量维数） 无人机 + 虚拟机个数 -1 + （无人机 + 虚拟机个数） * 子任务数量 * 任务数量
         Dim = settings.N + settings.M - 1 + (settings.K + settings.N) * settings.I * settings.M
@@ -123,7 +123,6 @@ class MyProblem(ea.Problem):  # 继承Problem父类
                             subTask.finished_time = subTask.submitTime + subTask.execution_time_e
                             task.data_e['W'] = 1  # W的认识
                             subTask.power_cost = settings.Pi_edge[i] #
-
 
                         if i == 1:
                             subTask.execution_time_e = settings.RDMT_Edge[i]  # 执行时间
@@ -380,24 +379,30 @@ class MyProblem(ea.Problem):  # 继承Problem父类
 
         cloud_last = findlastfinshtime_c(cloudTasks) # 找到云处理的最后的时间，处理时间最小
         edge_last = findlastfinshtime_e(cloudTasks)  # 每个边的最后的时间  方差最小
-        power_edge_cost = calu_power_cost(edgeTasks)  # 边缘的消耗，这个是约束项
+        power_edge_cost = calu_power_cost(task_groups)  # 边缘的消耗，这个是约束项   计算+飞行
         edge_max_time = find_max_distance(task_groups)  # 边端最长飞行距离  目标 飞行距离最小
 
-
         # pop.CV = np.hstack([,])  # 计算违反约束程度值，赋值给种群对象的CV属性
+        arr = np.array([x - 150 for x in power_edge_cost])
+
+        # pop.CV = np.reshape(arr, [arr.shape[0], 1])
 
 
-        build_relationship(cloudTasks, edgeTasks)
-        # create_json(cloudTasks, cloudTasks, settings.N)
-        create_list(cloudTasks, edgeTasks, settings.N, settings.K)
-        print()
+
+        # build_relationship(cloudTasks, edgeTasks)
+        # # create_json(cloudTasks, cloudTasks, settings.N)
+        # create_list(cloudTasks, edgeTasks, settings.N, settings.K)
 
 
-        x1 = X[:, [0]]
-        x2 = X[:, [1]]
-        x3 = X[:, [2]]
-        x4 = X[:, [3]]
-        x5 = X[:, [4]]
-        x6 = X[:, [5]]
-        pop.ObjV = np.sin(2 * x1) - np.cos(x2) + 2 * x3 ** 2 - 3 * x4 + (
-                    x5 - 3) ** 2 + 7 * x6  # 计算目标函数值，赋值给pop种群对象的ObjV属性
+
+        # x1 = X[:, [0]]
+        # x2 = X[:, [1]]
+        # x3 = X[:, [2]]
+        # x4 = X[:, [3]]
+        # x5 = X[:, [4]]
+        # x6 = X[:, [5]]
+
+        pop.ObjV = np.array([cloud_last, edge_max_time / 100, np.var(edge_last) / 10]).reshape(-1, 1).T
+            # np.vstack().T
+        # pop.ObjV = np.sin(2 * x1) - np.cos(x2) + 2 * x3 ** 2 - 3 * x4 + (
+        #             x5 - 3) ** 2 + 7 * x6  # 计算目标函数值，赋值给pop种群对象的ObjV属性

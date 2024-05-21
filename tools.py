@@ -23,9 +23,10 @@ def split_array_by_greater_than_N(arr, N):
             # 否则，将数字添加到临时数组中
             temp_array.append(num)
 
+
     # 将最后一个临时数组添加到结果中（如果它不为空）
-    if temp_array:
-        sub_arrays.append(temp_array)
+    # if temp_array:
+    sub_arrays.append(temp_array)
 
     return sub_arrays
 
@@ -37,15 +38,14 @@ def calu_distance(x1, y1, x2, y2):
 
 def calu_fly_power_cost(places, m, W, H, s, P):
     if len(m) == 0:
-        return 0
+        return 0, 0
     else:
         distance = 0
         for i in range(len(m) - 1):
             distance += calu_distance(W * places[int(m[i])][0], H * places[int(m[i])][1], W * places[int(m[i + 1])][0], H * places[int(m[i + 1])][1])
         distance += calu_distance(0, 0, W * places[int(m[0])][0], H * places[int(m[0])][1])
         distance += calu_distance(W * places[int(m[-1])][0], H * places[int(m[-1])][1], 0, 0)
-        return distance / s * P, distance  # 路程除以速度乘以功耗
-
+        return distance / s * P / 3600, distance  # 路程除以速度乘以功耗
 
 def find_max_distance(groups):
     maxDistance = 0
@@ -152,7 +152,11 @@ def findlastfinshtime_e(edgeTasks):
 def calu_power_cost(taskgroups):
     cost = []
     for taskgroup in taskgroups:
-        cost.append(taskgroup.power_compute_cost + taskgroup.power_fly_cost)
+        # temp = 0
+        # for edgetask in taskgroup:
+        #     temp += edgetask.subtask.power_cost
+        cost.append(taskgroup.power_fly_cost + taskgroup.power_compute_cost)
+        # cost.append(temp)
     return cost
 
 # 创建json
